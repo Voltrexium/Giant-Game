@@ -19,12 +19,9 @@ The original Java/BlueJ codebase lives in [`old/`](old/).
 ```
 ├── index.html          # UI + inline CSS
 ├── app.js              # Canvas, input, screens, game loop
-├── config.js           # Generated (gitignored)
 ├── js/
 │   ├── game-logic.js   # Pure Swarm rules (no DOM)
 │   └── storage.js      # localStorage helpers
-├── scripts/
-│   └── generate-config.mjs
 ├── package.json
 └── old/                # Legacy Java game collection
 ```
@@ -51,4 +48,4 @@ Open [http://localhost:3000](http://localhost:3000).
 - Avoid **red enemies** — they chase you and end the run on contact
 - **White rounded squares** cost 10 points; **white squares** reset your score to 0
 - Level up when score exceeds `level × 50`; each level spawns a new enemy
-- Earn `$` (level ÷ 2) per run; revive costs $100
+- Revive costs $100

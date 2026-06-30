@@ -4,8 +4,7 @@
   "private": true,
   "description": "Single-player Swarm — collect dots, dodge enemies",
   "scripts": {
-    "config": "node scripts/generate-config.mjs",
-    "start": "npm run config && npx --yes serve -l 3000",
+    "start": "npx --yes serve -l 3000",
     "dev": "npm start"
   }
 }

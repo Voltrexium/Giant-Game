@@ -7,7 +7,6 @@ import {
   sessionEarnings,
 } from "./js/game-logic.js";
 import { loadMoney, saveMoney, loadHighScore, saveHighScore } from "./js/storage.js";
-import { SUPABASE_ENABLED } from "./config.js";
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById("board"));
 const ctx = canvas.getContext("2d");
@@ -108,7 +107,6 @@ function showTitle() {
     <div class="btn-row">
       <button class="btn-primary" data-action="play">Play</button>
     </div>
-    ${SUPABASE_ENABLED ? "<p style='margin-top:1rem;font-size:0.75rem'>Online leaderboards enabled</p>" : ""}
   `);
   bindOverlayButtons();
 }
@@ -177,7 +175,6 @@ function endGame() {
   showOverlay(`
     <h2>Game Over</h2>
     <p>Score: <strong style="color:var(--accent)">${gameState.points}</strong> · Level ${displayLevel(gameState)}</p>
-    <p>Earned $${Math.floor(gameState.level / 2)} this run.</p>
     <div class="btn-row">
       <button class="btn-primary" data-action="again">Play Again</button>
       ${canRevive ? '<button class="btn-secondary" data-action="revive">Revive ($100)</button>' : ""}

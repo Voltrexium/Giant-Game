@@ -247,7 +247,7 @@ function findColliding(player, points, tolerance) {
   return null;
 }
 
-/** Session earnings from a finished run (matches legacy Java formula). */
+/** Update balance after a finished run (matches legacy Java formula). */
 export function sessionEarnings(state, startingMoney) {
   return Math.floor(state.level / 2) + startingMoney;
 }
