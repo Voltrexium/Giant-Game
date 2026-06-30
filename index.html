@@ -180,6 +180,24 @@
 
     #help-text { color: var(--muted); }
 
+    .earnings-pop {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
+      animation: earnings-pop-in 0.45s ease-out;
+    }
+
+    .earnings-pop strong {
+      font-size: 1.35rem;
+      text-shadow: 0 0 16px var(--glow);
+    }
+
+    @keyframes earnings-pop-in {
+      from { opacity: 0; transform: translateY(8px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
     dialog {
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 12px;

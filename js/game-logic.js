@@ -67,25 +67,45 @@ export function overlaps(ax, ay, bx, by, tolerance) {
   );
 }
 
+export function displayLevel(state) {
+  return state.level === 0 ? 1 : state.level;
+}
+
+function enemySpeedForLevel(level) {
+  return 1 + level * 0.1;
+}
+
+/**
+ * @typedef {{ type: 'collect', x: number, y: number, kind: 'circle' | 'circle2' | 'orb' } | { type: 'penalty', x: number, y: number } | { type: 'death' }} GameEvent
+ */
+
 /**
  * @param {GameState} state
  * @param {{ up: boolean, down: boolean, left: boolean, right: boolean, mouseX: number, mouseY: number, controlScheme: 'W' | 'M' }} input
+ * @returns {GameEvent[]}
  */
 export function tick(state, input) {
-  if (state.gameOver) return;
+  if (state.gameOver) return [];
 
+  state.enemySpeed = enemySpeedForLevel(state.level);
+
+  /** @type {GameEvent[]} */
+  const events = [];
   updateLeveling(state);
-  updateOrb(state);
+  events.push(...updateOrb(state));
   moveEnemies(state);
   spawnCollectibles(state);
   moveOrbTowardPlayer(state);
   movePlayer(state, input);
-  handleCollisions(state);
+  events.push(...handleCollisions(state));
+  return events;
 }
 
 function updateLeveling(state) {
   if (state.points > state.level * 50 && state.points > state.pointCheck) {
     state.level += 1;
+    state.pointCheck = state.points;
+    state.enemySpeed = enemySpeedForLevel(state.level);
     state.enemies.push({
       x: rand(0, WIDTH - 100),
       y: rand(0, HEIGHT - 100),
@@ -100,6 +120,9 @@ function respawnOrb(state) {
 }
 
 function updateOrb(state) {
+  /** @type {GameEvent[]} */
+  const events = [];
+
   if (Math.floor(Math.random() * 10000) === 1 && !state.orb.alive) {
     respawnOrb(state);
   }
@@ -115,7 +138,15 @@ function updateOrb(state) {
     repositionEnemies(state);
     state.points *= 2;
     state.orbCollected = true;
+    events.push({
+      type: "collect",
+      x: orb.x + ENTITY_SIZE / 2,
+      y: orb.y + ENTITY_SIZE / 2,
+      kind: "orb",
+    });
   }
+
+  return events;
 }
 
 function repositionEnemies(state) {
@@ -161,9 +192,9 @@ function spawnCollectibles(state) {
 function moveOrbTowardPlayer(state) {
   const orb = state.orb;
   const player = state.player;
-  if (orb.x < player.x || orb.x >= HEIGHT - ENTITY_SIZE) orb.x -= 1;
+  if (orb.x < player.x || orb.x >= WIDTH - ENTITY_SIZE) orb.x -= 1;
   if (orb.x > player.x || orb.x <= 0) orb.x += 1;
-  if (orb.y < player.y || orb.y >= WIDTH - ENTITY_SIZE) orb.y -= 1;
+  if (orb.y < player.y || orb.y >= HEIGHT - ENTITY_SIZE) orb.y -= 1;
   if (orb.y > player.y || orb.y <= 0) orb.y += 1;
 }
 
@@ -205,37 +236,64 @@ function movePlayer(state, input) {
 
 function handleCollisions(state) {
   const { player } = state;
+  /** @type {GameEvent[]} */
+  const events = [];
 
   let hit = findColliding(player, state.circles2, 10);
   if (hit) {
     state.points += state.points > 1000 ? 30 : 20;
     state.circles2 = state.circles2.filter((p) => p !== hit);
+    events.push({
+      type: "collect",
+      x: hit.x + ENTITY_SIZE / 2,
+      y: hit.y + ENTITY_SIZE / 2,
+      kind: "circle2",
+    });
   }
 
   hit = findColliding(player, state.circles, 10);
   if (hit) {
     state.points += state.points > 1000 ? 20 : 10;
     state.circles = state.circles.filter((p) => p !== hit);
+    events.push({
+      type: "collect",
+      x: hit.x + ENTITY_SIZE / 2,
+      y: hit.y + ENTITY_SIZE / 2,
+      kind: "circle",
+    });
   }
 
   hit = findColliding(player, state.curved, 10);
   if (hit && state.points >= 10) {
     state.points -= 10;
     state.curved = state.curved.filter((p) => p !== hit);
+    events.push({
+      type: "penalty",
+      x: hit.x + ENTITY_SIZE / 2,
+      y: hit.y + ENTITY_SIZE / 2,
+    });
   }
 
   hit = findColliding(player, state.pointResetters, 10);
   if (hit && state.points >= 5) {
     state.points = 0;
     state.pointResetters = state.pointResetters.filter((p) => p !== hit);
+    events.push({
+      type: "penalty",
+      x: hit.x + ENTITY_SIZE / 2,
+      y: hit.y + ENTITY_SIZE / 2,
+    });
   }
 
   for (const enemy of state.enemies) {
     if (overlaps(player.x, player.y, enemy.x, enemy.y, 20)) {
       state.gameOver = true;
-      return;
+      events.push({ type: "death" });
+      return events;
     }
   }
+
+  return events;
 }
 
 function findColliding(player, points, tolerance) {

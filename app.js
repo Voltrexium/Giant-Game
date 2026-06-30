@@ -1,12 +1,19 @@
 import {
   WIDTH,
   HEIGHT,
-  ENTITY_SIZE,
   createInitialState,
   tick,
   sessionEarnings,
+  displayLevel,
 } from "./js/game-logic.js";
 import { loadMoney, saveMoney, loadHighScore, saveHighScore } from "./js/storage.js";
+import { draw } from "./js/renderer.js";
+import {
+  createEffectsState,
+  resetEffects,
+  applyEvents,
+  updateEffects,
+} from "./js/effects.js";
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById("board"));
 const ctx = canvas.getContext("2d");
@@ -30,8 +37,13 @@ let highScore = loadHighScore();
 /** @type {import('./js/game-logic.js').GameState | null} */
 let gameState = null;
 let sessionStartMoney = 0;
-let lastTime = 0;
+let lastTickTime = 0;
+let lastFrameTime = 0;
 const TICK_MS = 16;
+const DEATH_MS = 500;
+
+const effects = createEffectsState();
+let dyingUntil = 0;
 
 const keys = { up: false, down: false, left: false, right: false };
 let mouseX = WIDTH / 2;
@@ -82,16 +94,31 @@ function bindOverlayButtons() {
       if (action === "mouse") startGame("M");
       if (action === "play") showControlSelect();
       if (action === "again") startGame(controlScheme);
-      if (action === "menu") showTitle();
+      if (action === "menu") requestLeave();
       if (action === "revive") tryRevive();
       if (action === "resume") resumeGame();
     });
   });
 }
 
+function animateEarnings(amount) {
+  const el = document.getElementById("earnings-amount");
+  if (!el || amount <= 0) return;
+  const start = performance.now();
+  const duration = 800;
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - (1 - t) ** 3;
+    el.textContent = `$${Math.round(amount * eased)}`;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 function showTitle() {
   screen = "title";
   gameState = null;
+  dyingUntil = 0;
   statusPill.textContent = "Press Play to start";
   helpText.textContent = "WASD / arrows or mouse · ESC to pause";
   showOverlay(`
@@ -100,6 +127,7 @@ function showTitle() {
     <div class="legend">
       <div><span style="background:#4ecdc4"></span> You — stay alive</div>
       <div><span style="background:#e056fd"></span> Pink — points</div>
+      <div><span style="background:#9b28d4;box-shadow:0 0 6px #c026d3"></span> Violet (glow) — bonus points</div>
       <div><span style="background:#4ecdc4"></span> Cyan orb — 2× score</div>
       <div><span style="background:#ff6b6b"></span> Red enemies — game over</div>
       <div><span style="background:#ccc;border-radius:2px"></span> White — penalties</div>
@@ -128,6 +156,8 @@ function startGame(scheme) {
   controlScheme = scheme;
   sessionStartMoney = money;
   gameState = createInitialState();
+  resetEffects(effects);
+  dyingUntil = 0;
   screen = "playing";
   hideOverlay();
   statusPill.textContent = `Level ${displayLevel(gameState)} · ${gameState.points} pts`;
@@ -137,12 +167,8 @@ function startGame(scheme) {
       : "Move mouse to steer · ESC to pause";
 }
 
-function displayLevel(state) {
-  return state.level === 0 ? 1 : state.level;
-}
-
 function pauseGame() {
-  if (screen !== "playing" || !gameState) return;
+  if (screen !== "playing" || !gameState || dyingUntil > 0) return;
   screen = "paused";
   showOverlay(`
     <h2>Paused</h2>
@@ -161,10 +187,20 @@ function resumeGame() {
   hideOverlay();
 }
 
+function requestLeave() {
+  if (screen === "paused" && gameState) {
+    leaveDialog.showModal();
+    return;
+  }
+  showTitle();
+}
+
 function endGame() {
   if (!gameState) return;
   screen = "gameover";
-  money = sessionEarnings(gameState, sessionStartMoney);
+  const newMoney = sessionEarnings(gameState, sessionStartMoney);
+  const earned = newMoney - sessionStartMoney;
+  money = newMoney;
   saveMoney(money);
   highScore = saveHighScore(gameState.points);
   updateDisplays();
@@ -175,6 +211,11 @@ function endGame() {
   showOverlay(`
     <h2>Game Over</h2>
     <p>Score: <strong style="color:var(--accent)">${gameState.points}</strong> · Level ${displayLevel(gameState)}</p>
+    ${
+      earned > 0
+        ? `<p class="earnings-pop" id="earnings-pop">+<strong id="earnings-amount">$0</strong> earned this run</p>`
+        : ""
+    }
     <div class="btn-row">
       <button class="btn-primary" data-action="again">Play Again</button>
       ${canRevive ? '<button class="btn-secondary" data-action="revive">Revive ($100)</button>' : ""}
@@ -182,6 +223,7 @@ function endGame() {
     </div>
   `);
   bindOverlayButtons();
+  animateEarnings(earned);
 }
 
 function tryRevive() {
@@ -193,6 +235,8 @@ function tryRevive() {
   const enemyCount = gameState.enemies.length;
   gameState = createInitialState(points, enemyCount);
   gameState.reviveUsed = true;
+  resetEffects(effects);
+  dyingUntil = 0;
   sessionStartMoney = money;
   screen = "playing";
   hideOverlay();
@@ -213,7 +257,11 @@ const KEY_MAP = {
 window.addEventListener("keydown", (e) => {
   if (e.code === "Escape") {
     e.preventDefault();
-    if (screen === "playing") pauseGame();
+    if (leaveDialog.open) {
+      leaveDialog.close();
+      return;
+    }
+    if (screen === "playing" && dyingUntil === 0) pauseGame();
     else if (screen === "paused") resumeGame();
     return;
   }
@@ -255,116 +303,46 @@ leaveConfirm.addEventListener("click", () => {
 
 window.addEventListener("resize", resize);
 
-function draw(state) {
-  ctx.fillStyle = "#0d0d18";
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-  ctx.fillStyle = "#e056fd";
-  for (const p of state.circles) {
-    ctx.beginPath();
-    ctx.arc(p.x + ENTITY_SIZE / 2, p.y + ENTITY_SIZE / 2, ENTITY_SIZE / 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  for (const p of state.circles2) {
-    ctx.beginPath();
-    ctx.arc(p.x + ENTITY_SIZE / 2, p.y + ENTITY_SIZE / 2, ENTITY_SIZE / 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = "#ff6b6b";
-  for (const enemy of state.enemies) {
-    ctx.beginPath();
-    ctx.arc(enemy.x + ENTITY_SIZE / 2, enemy.y + ENTITY_SIZE / 2, ENTITY_SIZE / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#ffaaaa";
-    ctx.font = "10px sans-serif";
-    ctx.fillText("Enemy", enemy.x - 2, enemy.y - 4);
-    ctx.fillStyle = "#ff6b6b";
-  }
-
-  if (state.orb.alive) {
-    ctx.fillStyle = "#4ecdc4";
-    ctx.shadowColor = "#4ecdc4";
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.arc(
-      state.orb.x + ENTITY_SIZE / 2,
-      state.orb.y + ENTITY_SIZE / 2,
-      ENTITY_SIZE / 2,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-    ctx.shadowBlur = 0;
-  }
-
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  for (const p of state.curved) {
-    roundRect(ctx, p.x, p.y, ENTITY_SIZE, ENTITY_SIZE, 8);
-    ctx.fill();
-  }
-  ctx.strokeStyle = "rgba(255,255,255,0.6)";
-  ctx.lineWidth = 2;
-  for (const p of state.pointResetters) {
-    ctx.strokeRect(p.x, p.y, ENTITY_SIZE, ENTITY_SIZE);
-  }
-
-  const { player } = state;
-  ctx.fillStyle = "#4ecdc4";
-  ctx.shadowColor = "#4ecdc4";
-  ctx.shadowBlur = 16;
-  ctx.beginPath();
-  ctx.arc(player.x + player.w / 2, player.y + player.h / 2, player.w / 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-
-  ctx.fillStyle = "rgba(234, 234, 234, 0.9)";
-  ctx.font = "14px Segoe UI, system-ui, sans-serif";
-  ctx.fillText(`Level ${displayLevel(state)}`, 16, 24);
-  ctx.fillText(`Points ${state.points}`, 16, 44);
-  ctx.fillText(`Enemies ${state.enemies.length}`, 16, 64);
-}
-
-function roundRect(context, x, y, w, h, r) {
-  context.beginPath();
-  context.moveTo(x + r, y);
-  context.lineTo(x + w - r, y);
-  context.quadraticCurveTo(x + w, y, x + w, y + r);
-  context.lineTo(x + w, y + h - r);
-  context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  context.lineTo(x + r, y + h);
-  context.quadraticCurveTo(x, y + h, x, y + h - r);
-  context.lineTo(x, y + r);
-  context.quadraticCurveTo(x, y, x + r, y);
-  context.closePath();
-}
-
 function frame(time) {
   requestAnimationFrame(frame);
-  const elapsed = time - lastTime;
-  if (elapsed < TICK_MS) return;
-  lastTime = time - (elapsed % TICK_MS);
 
-  if (screen === "playing" && gameState && !gameState.gameOver) {
-    tick(gameState, {
-      up: keys.up,
-      down: keys.down,
-      left: keys.left,
-      right: keys.right,
-      mouseX,
-      mouseY,
-      controlScheme,
-    });
+  const frameDt = lastFrameTime ? Math.min((time - lastFrameTime) / 1000, 0.05) : 0;
+  lastFrameTime = time;
 
-    statusPill.textContent = `Level ${displayLevel(gameState)} · ${gameState.points} pts`;
+  const isDying = dyingUntil > 0;
+  const tickElapsed = time - lastTickTime;
+  const shouldTick = tickElapsed >= TICK_MS;
 
-    if (gameState.gameOver) {
+  if (shouldTick) {
+    lastTickTime = time - (tickElapsed % TICK_MS);
+
+    if (screen === "playing" && gameState && !gameState.gameOver && !isDying) {
+      const events = tick(gameState, {
+        up: keys.up,
+        down: keys.down,
+        left: keys.left,
+        right: keys.right,
+        mouseX,
+        mouseY,
+        controlScheme,
+      });
+      applyEvents(effects, events);
+      statusPill.textContent = `Level ${displayLevel(gameState)} · ${gameState.points} pts`;
+
+      if (gameState.gameOver) {
+        dyingUntil = performance.now() + DEATH_MS;
+      }
+    }
+
+    if (isDying && performance.now() >= dyingUntil) {
+      dyingUntil = 0;
       endGame();
     }
   }
 
-  if (gameState && (screen === "playing" || screen === "paused")) {
-    draw(gameState);
+  if (gameState && (screen === "playing" || screen === "paused" || dyingUntil > 0)) {
+    updateEffects(effects, frameDt);
+    draw(ctx, gameState, effects, { displayLevel, time });
   }
 }
 
