@@ -15,18 +15,29 @@
       --pink: #e056fd;
       --cyan: #4ecdc4;
       --glow: rgba(78, 205, 196, 0.35);
+      --board-max: 720px;
+    }
+
+    @media (min-width: 1024px) {
+      :root { --board-max: 900px; }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       min-height: 100vh;
+      min-height: 100dvh;
       font-family: "Segoe UI", system-ui, sans-serif;
       background: radial-gradient(ellipse at top, #1f2a44 0%, var(--bg) 55%);
       color: var(--text);
       display: flex;
       flex-direction: column;
       padding: 0;
+    }
+
+    body.is-active {
+      overflow: hidden;
+      touch-action: none;
     }
 
     .site-nav {
@@ -40,7 +51,9 @@
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      padding: 0.7rem 1.25rem;
+      padding: 0.7rem max(1.25rem, env(safe-area-inset-left, 0px));
+      padding-top: max(0.7rem, env(safe-area-inset-top, 0px));
+      padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
       font-size: 0.875rem;
       font-weight: 500;
       color: #9aa8c4;
@@ -64,10 +77,19 @@
       flex-direction: column;
       align-items: center;
       padding: 1rem;
+      padding-left: max(1rem, env(safe-area-inset-left, 0px));
+      padding-right: max(1rem, env(safe-area-inset-right, 0px));
+      padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 0.5rem; padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)); }
+      body.is-playing #game-header,
+      body.is-playing #hud { display: none; }
     }
 
     header {
-      width: min(100%, 720px);
+      width: min(100%, var(--board-max));
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -99,13 +121,22 @@
 
     #board-wrap {
       position: relative;
-      width: min(100vw - 2rem, 720px);
+      width: min(100dvw - 2rem, var(--board-max));
       aspect-ratio: 1;
       border-radius: 12px;
       overflow: hidden;
       border: 2px solid rgba(78, 205, 196, 0.25);
       box-shadow: 0 0 40px var(--glow), inset 0 0 60px rgba(0, 0, 0, 0.35);
       background: #0d0d18;
+      touch-action: none;
+    }
+
+    #board-wrap:fullscreen {
+      width: 100vmin;
+      height: 100vmin;
+      max-width: none;
+      border-radius: 0;
+      border: none;
     }
 
     canvas {
@@ -113,8 +144,11 @@
       width: 100%;
       height: 100%;
       touch-action: none;
-      cursor: crosshair;
+      outline: none;
     }
+
+    canvas.canvas--pointer { cursor: crosshair; }
+    canvas.canvas--keyboard { cursor: default; }
 
     #overlay {
       position: absolute;
@@ -157,6 +191,57 @@
 
     .legend span { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: middle; }
 
+    .legend details {
+      text-align: left;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.6;
+    }
+
+    .legend details summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .legend--full { display: block; }
+    .legend--compact { display: none; }
+
+    @media (max-width: 640px) {
+      .legend--full { display: none; }
+      .legend--compact { display: block; }
+    }
+
+    .board-btn {
+      position: absolute;
+      z-index: 2;
+      top: 0.5rem;
+      min-width: 2.75rem;
+      min-height: 2.75rem;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      background: rgba(22, 33, 62, 0.88);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1;
+      backdrop-filter: blur(4px);
+    }
+
+    .board-btn--pause { right: 0.5rem; }
+    .board-btn--fs { right: 3.5rem; }
+
+    @media (max-width: 640px) {
+      .board-btn {
+        min-width: 3rem;
+        min-height: 3rem;
+      }
+      .board-btn--fs { display: none; }
+    }
+
     .btn-row {
       display: flex;
       flex-direction: column;
@@ -173,6 +258,14 @@
     }
 
     button:active { transform: scale(0.98); }
+
+    @media (max-width: 640px) {
+      button {
+        min-height: 3rem;
+        padding: 0.85rem 1rem;
+      }
+      .btn-row { gap: 0.75rem; }
+    }
 
     .btn-primary {
       background: var(--accent);
@@ -194,7 +287,7 @@
     }
 
     #hud {
-      width: min(100%, 720px);
+      width: min(100%, var(--board-max));
       margin-top: 0.75rem;
       display: flex;
       flex-wrap: wrap;
@@ -234,6 +327,12 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .earnings-pop { animation: none; }
+      button { transition: none; }
+      .site-nav__link { transition: none; }
+    }
+
     dialog {
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 12px;
@@ -264,7 +363,7 @@
   </nav>
 
   <main>
-  <header>
+  <header id="game-header">
     <h1>Swarm</h1>
     <div class="stats">
       <div class="stat-pill">$ <strong id="money-display">0</strong></div>
@@ -273,7 +372,9 @@
   </header>
 
   <div id="board-wrap">
-    <canvas id="board" aria-label="Swarm game board"></canvas>
+    <button type="button" id="pause-btn" class="board-btn board-btn--pause" aria-label="Pause" hidden>Pause</button>
+    <button type="button" id="fullscreen-btn" class="board-btn board-btn--fs" aria-label="Toggle fullscreen" hidden>Full</button>
+    <canvas id="board" tabindex="0" aria-label="Swarm game board"></canvas>
     <div id="overlay">
       <div class="panel" id="overlay-panel"></div>
     </div>

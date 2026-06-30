@@ -82,7 +82,7 @@ function enemySpeedForLevel(level) {
 
 /**
  * @param {GameState} state
- * @param {{ up: boolean, down: boolean, left: boolean, right: boolean, mouseX: number, mouseY: number, controlScheme: 'W' | 'M' }} input
+ * @param {{ up: boolean, down: boolean, left: boolean, right: boolean, mouseX: number, mouseY: number, inputMode: 'touch' | 'desktop' }} input
  * @returns {GameEvent[]}
  */
 export function tick(state, input) {
@@ -209,40 +209,67 @@ function moveOrbTowardPlayer(state) {
   if (orb.y > player.y || orb.y <= 0) orb.y += 1;
 }
 
+function clampX(x, w) {
+  if (x < 0) return 0;
+  if (x + w > WIDTH - 1) return WIDTH - w - 1;
+  return x;
+}
+
+function clampY(y, h) {
+  if (y < 0) return 0;
+  if (y + h > HEIGHT - 1) return HEIGHT - h - 1;
+  return y;
+}
+
+/** @param {import('./game-logic.js').Player} p */
+function steerToward(p, targetX, targetY, speed) {
+  const dx = targetX - p.x;
+  const dy = targetY - p.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1) return;
+
+  const step = Math.min(speed, dist);
+  p.x = clampX(p.x + (dx / dist) * step, p.w);
+  p.y = clampY(p.y + (dy / dist) * step, p.h);
+}
+
+/**
+ * @param {import('./game-logic.js').Player} p
+ * @param {{ up: boolean, down: boolean, left: boolean, right: boolean }} input
+ * @param {number} speed
+ * @returns {boolean}
+ */
+function moveByKeys(p, input, speed) {
+  let dx = 0;
+  let dy = 0;
+  if (input.left) dx -= 1;
+  if (input.right) dx += 1;
+  if (input.up) dy -= 1;
+  if (input.down) dy += 1;
+  if (dx === 0 && dy === 0) return false;
+
+  const len = Math.hypot(dx, dy);
+  p.x = clampX(p.x + (dx / len) * speed, p.w);
+  p.y = clampY(p.y + (dy / len) * speed, p.h);
+  return true;
+}
+
 /**
  * @param {GameState} state
- * @param {{ up: boolean, down: boolean, left: boolean, right: boolean, mouseX: number, mouseY: number, controlScheme: 'W' | 'M' }} input
+ * @param {{ up: boolean, down: boolean, left: boolean, right: boolean, mouseX: number, mouseY: number, inputMode: 'touch' | 'desktop' }} input
  */
 function movePlayer(state, input) {
   const p = state.player;
   const { speed } = p;
 
-  if (input.controlScheme === "W") {
-    if (input.down) {
-      p.y += speed;
-      if (p.y + p.h > HEIGHT - 1) p.y = HEIGHT - p.h - 1;
-    }
-    if (input.up) {
-      p.y -= speed;
-      if (p.y < 0) p.y = 0;
-    }
-    if (input.left) {
-      p.x -= speed;
-      if (p.x < 0) p.x = 0;
-    }
-    if (input.right) {
-      p.x += speed;
-      if (p.x + p.w > WIDTH - 1) p.x = WIDTH - p.w - 1;
-    }
+  if (input.inputMode === "touch") {
+    steerToward(p, input.mouseX, input.mouseY, speed);
     return;
   }
 
-  const mx = input.mouseX;
-  const my = input.mouseY;
-  if (p.x < mx && p.x + speed < WIDTH - ENTITY_SIZE) p.x += speed;
-  if (p.x > mx && p.x - speed > 0) p.x -= speed;
-  if (p.y < my && p.y + speed < HEIGHT - ENTITY_SIZE) p.y += speed;
-  if (p.y > my && p.y - speed > 0) p.y -= speed;
+  if (!moveByKeys(p, input, speed)) {
+    steerToward(p, input.mouseX, input.mouseY, speed);
+  }
 }
 
 function handleCollisions(state) {
