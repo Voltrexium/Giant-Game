@@ -1,4 +1,5 @@
 /** @typedef {{ x: number, y: number }} Point */
+/** @typedef {{ x: number, y: number, valuable: boolean }} Collectible */
 /** @typedef {{ x: number, y: number, w: number, h: number, speed: number }} Player */
 /** @typedef {{ x: number, y: number }} Enemy */
 
@@ -9,6 +10,7 @@ export const ENTITY_SIZE = 25;
 const MAX_CIRCLES = 25;
 const MAX_CURVED = 25;
 const MAX_RESETTERS = 15;
+const VALUABLE_CIRCLE_CHANCE = 0.25;
 
 /**
  * @returns {import('./game-logic.js').GameState}
@@ -31,7 +33,6 @@ export function createInitialState(points = 0, enemyCount = 0) {
   return {
     player,
     circles: [],
-    circles2: [],
     curved: [],
     pointResetters: [],
     enemies,
@@ -76,7 +77,7 @@ function enemySpeedForLevel(level) {
 }
 
 /**
- * @typedef {{ type: 'collect', x: number, y: number, kind: 'circle' | 'circle2' | 'orb' } | { type: 'penalty', x: number, y: number } | { type: 'death' }} GameEvent
+ * @typedef {{ type: 'collect', x: number, y: number, kind: 'dot' | 'orb', valuable?: boolean } | { type: 'penalty', x: number, y: number } | { type: 'death' }} GameEvent
  */
 
 /**
@@ -174,12 +175,22 @@ function moveEnemies(state) {
   }
 }
 
+function spawnCircle() {
+  return {
+    x: rand(0, WIDTH - 100),
+    y: rand(0, HEIGHT - 100),
+    valuable: Math.random() < VALUABLE_CIRCLE_CHANCE,
+  };
+}
+
+function circlePoints(state, valuable) {
+  if (valuable) return state.points > 1000 ? 30 : 20;
+  return state.points > 1000 ? 20 : 10;
+}
+
 function spawnCollectibles(state) {
   if (Math.floor(Math.random() * 100) === 1 && state.circles.length < MAX_CIRCLES) {
-    state.circles.push({ x: rand(0, WIDTH - 100), y: rand(0, HEIGHT - 100) });
-  }
-  if (Math.floor(Math.random() * 100) === 1 && state.circles2.length < MAX_CIRCLES) {
-    state.circles2.push({ x: rand(0, WIDTH - 100), y: rand(0, HEIGHT - 100) });
+    state.circles.push(spawnCircle());
   }
   if (Math.floor(Math.random() * 100) === 1 && state.curved.length < MAX_CURVED) {
     state.curved.push({ x: rand(0, WIDTH - ENTITY_SIZE), y: rand(0, HEIGHT - ENTITY_SIZE) });
@@ -239,49 +250,38 @@ function handleCollisions(state) {
   /** @type {GameEvent[]} */
   const events = [];
 
-  let hit = findColliding(player, state.circles2, 10);
+  const hit = findColliding(player, state.circles, 10);
   if (hit) {
-    state.points += state.points > 1000 ? 30 : 20;
-    state.circles2 = state.circles2.filter((p) => p !== hit);
-    events.push({
-      type: "collect",
-      x: hit.x + ENTITY_SIZE / 2,
-      y: hit.y + ENTITY_SIZE / 2,
-      kind: "circle2",
-    });
-  }
-
-  hit = findColliding(player, state.circles, 10);
-  if (hit) {
-    state.points += state.points > 1000 ? 20 : 10;
+    state.points += circlePoints(state, hit.valuable);
     state.circles = state.circles.filter((p) => p !== hit);
     events.push({
       type: "collect",
       x: hit.x + ENTITY_SIZE / 2,
       y: hit.y + ENTITY_SIZE / 2,
-      kind: "circle",
+      kind: "dot",
+      valuable: hit.valuable,
     });
   }
 
-  hit = findColliding(player, state.curved, 10);
-  if (hit && state.points >= 10) {
+  let penaltyHit = findColliding(player, state.curved, 10);
+  if (penaltyHit && state.points >= 10) {
     state.points -= 10;
-    state.curved = state.curved.filter((p) => p !== hit);
+    state.curved = state.curved.filter((p) => p !== penaltyHit);
     events.push({
       type: "penalty",
-      x: hit.x + ENTITY_SIZE / 2,
-      y: hit.y + ENTITY_SIZE / 2,
+      x: penaltyHit.x + ENTITY_SIZE / 2,
+      y: penaltyHit.y + ENTITY_SIZE / 2,
     });
   }
 
-  hit = findColliding(player, state.pointResetters, 10);
-  if (hit && state.points >= 5) {
+  penaltyHit = findColliding(player, state.pointResetters, 10);
+  if (penaltyHit && state.points >= 5) {
     state.points = 0;
-    state.pointResetters = state.pointResetters.filter((p) => p !== hit);
+    state.pointResetters = state.pointResetters.filter((p) => p !== penaltyHit);
     events.push({
       type: "penalty",
-      x: hit.x + ENTITY_SIZE / 2,
-      y: hit.y + ENTITY_SIZE / 2,
+      x: penaltyHit.x + ENTITY_SIZE / 2,
+      y: penaltyHit.y + ENTITY_SIZE / 2,
     });
   }
 
@@ -313,8 +313,7 @@ export function sessionEarnings(state, startingMoney) {
 /**
  * @typedef {Object} GameState
  * @property {Player} player
- * @property {Point[]} circles
- * @property {Point[]} circles2
+ * @property {Collectible[]} circles
  * @property {Point[]} curved
  * @property {Point[]} pointResetters
  * @property {Enemy[]} enemies

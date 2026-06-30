@@ -18,28 +18,26 @@ export function draw(ctx, state, effects, { displayLevel, time }) {
   ctx.fillStyle = "#0d0d18";
   ctx.fillRect(-20, -20, WIDTH + 40, HEIGHT + 40);
 
-  ctx.fillStyle = "#e056fd";
-  for (const p of state.circles) {
-    ctx.beginPath();
-    ctx.arc(p.x + ENTITY_SIZE / 2, p.y + ENTITY_SIZE / 2, ENTITY_SIZE / 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   const pulse = 0.65 + Math.sin(time * 0.006) * 0.35;
-  for (const p of state.circles2) {
+  for (const p of state.circles) {
     const cx = p.x + ENTITY_SIZE / 2;
     const cy = p.y + ENTITY_SIZE / 2;
     const r = ENTITY_SIZE / 2;
 
-    ctx.fillStyle = `rgba(155, 40, 210, ${0.25 + pulse * 0.2})`;
-    ctx.shadowColor = "#c026d3";
-    ctx.shadowBlur = 10 + pulse * 10;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 3 + pulse * 2, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.valuable) {
+      ctx.fillStyle = `rgba(155, 40, 210, ${0.25 + pulse * 0.2})`;
+      ctx.shadowColor = "#c026d3";
+      ctx.shadowBlur = 10 + pulse * 10;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 3 + pulse * 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#9b28d4";
+      ctx.shadowBlur = 6;
+    } else {
+      ctx.fillStyle = "#e056fd";
+      ctx.shadowBlur = 0;
+    }
 
-    ctx.fillStyle = "#9b28d4";
-    ctx.shadowBlur = 6;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();

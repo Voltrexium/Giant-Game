@@ -126,8 +126,7 @@ function showTitle() {
     <p>Collect pink dots, grab the cyan orb to double your score, and survive the red swarm.</p>
     <div class="legend">
       <div><span style="background:#4ecdc4"></span> You — stay alive</div>
-      <div><span style="background:#e056fd"></span> Pink — points</div>
-      <div><span style="background:#9b28d4;box-shadow:0 0 6px #c026d3"></span> Violet (glow) — bonus points</div>
+      <div><span style="background:#e056fd"></span> Pink — points (glowing violet = bonus)</div>
       <div><span style="background:#4ecdc4"></span> Cyan orb — 2× score</div>
       <div><span style="background:#ff6b6b"></span> Red enemies — game over</div>
       <div><span style="background:#ccc;border-radius:2px"></span> White — penalties</div>

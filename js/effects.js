@@ -54,7 +54,7 @@ export function triggerDeathFlash(effects) {
 }
 
 /**
- * @typedef {{ type: 'collect', x: number, y: number, kind: 'circle' | 'circle2' | 'orb' } | { type: 'penalty', x: number, y: number } | { type: 'death' }} GameEvent
+ * @typedef {{ type: 'collect', x: number, y: number, kind: 'dot' | 'orb', valuable?: boolean } | { type: 'penalty', x: number, y: number } | { type: 'death' }} GameEvent
  */
 
 /** @param {EffectsState} effects @param {GameEvent[]} events */
@@ -62,7 +62,7 @@ export function applyEvents(effects, events) {
   for (const event of events) {
     if (event.type === "collect") {
       const color =
-        event.kind === "orb" ? "#4ecdc4" : event.kind === "circle2" ? "#c026d3" : "#e056fd";
+        event.kind === "orb" ? "#4ecdc4" : event.valuable ? "#c026d3" : "#e056fd";
       spawnParticles(effects, event.x, event.y, color, event.kind === "orb" ? 14 : 8);
     } else if (event.type === "penalty") {
       triggerShake(effects, 5);
