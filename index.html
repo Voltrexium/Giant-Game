@@ -16,10 +16,15 @@
       --cyan: #4ecdc4;
       --glow: rgba(78, 205, 196, 0.35);
       --board-max: 720px;
+      --layout-chrome: 11.5rem;
     }
 
     @media (min-width: 1024px) {
       :root { --board-max: 900px; }
+    }
+
+    @media (max-width: 640px) {
+      body.is-playing { --layout-chrome: 5.5rem; }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -121,7 +126,7 @@
 
     #board-wrap {
       position: relative;
-      width: min(100dvw - 2rem, var(--board-max));
+      width: min(calc(100dvw - 2rem), var(--board-max), calc(100dvh - var(--layout-chrome)));
       aspect-ratio: 1;
       border-radius: 12px;
       overflow: hidden;
@@ -221,17 +226,33 @@
       min-width: 2.75rem;
       min-height: 2.75rem;
       padding: 0.45rem 0.65rem;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 8px;
-      background: rgba(22, 33, 62, 0.88);
+      background: rgba(22, 33, 62, 0.55);
       color: var(--text);
       font-size: 0.8rem;
       font-weight: 600;
       line-height: 1;
       backdrop-filter: blur(4px);
+      opacity: 0.38;
+      transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
     }
 
-    .board-btn--pause { right: 0.5rem; }
+    .board-btn:hover,
+    .board-btn:focus-visible {
+      opacity: 0.95;
+      background: rgba(22, 33, 62, 0.88);
+    }
+
+    .board-btn--pause {
+      right: 0;
+      transform: translateX(35%);
+    }
+
+    .board-btn--pause:hover,
+    .board-btn--pause:focus-visible {
+      transform: translateX(0);
+    }
     .board-btn--fs { right: 3.5rem; }
 
     @media (max-width: 640px) {
@@ -330,6 +351,7 @@
     @media (prefers-reduced-motion: reduce) {
       .earnings-pop { animation: none; }
       button { transition: none; }
+      .board-btn { transition: none; }
       .site-nav__link { transition: none; }
     }
 
