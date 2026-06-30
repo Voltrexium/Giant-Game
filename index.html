@@ -136,14 +136,6 @@
       touch-action: none;
     }
 
-    #board-wrap:fullscreen {
-      width: 100vmin;
-      height: 100vmin;
-      max-width: none;
-      border-radius: 0;
-      border: none;
-    }
-
     canvas {
       display: block;
       width: 100%;
@@ -253,14 +245,12 @@
     .board-btn--pause:focus-visible {
       transform: translateX(0);
     }
-    .board-btn--fs { right: 3.5rem; }
 
     @media (max-width: 640px) {
       .board-btn {
         min-width: 3rem;
         min-height: 3rem;
       }
-      .board-btn--fs { display: none; }
     }
 
     .btn-row {
@@ -395,7 +385,6 @@
 
   <div id="board-wrap">
     <button type="button" id="pause-btn" class="board-btn board-btn--pause" aria-label="Pause" hidden>Pause</button>
-    <button type="button" id="fullscreen-btn" class="board-btn board-btn--fs" aria-label="Toggle fullscreen" hidden>Full</button>
     <canvas id="board" tabindex="0" aria-label="Swarm game board"></canvas>
     <div id="overlay">
       <div class="panel" id="overlay-panel"></div>

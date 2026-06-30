@@ -34,7 +34,6 @@ const leaveCancel = document.getElementById("leave-cancel");
 const leaveConfirm = document.getElementById("leave-confirm");
 const boardWrap = /** @type {HTMLDivElement} */ (document.getElementById("board-wrap"));
 const pauseBtn = /** @type {HTMLButtonElement} */ (document.getElementById("pause-btn"));
-const fullscreenBtn = /** @type {HTMLButtonElement} */ (document.getElementById("fullscreen-btn"));
 
 /** @type {'title' | 'playing' | 'paused' | 'gameover'} */
 let screen = "title";
@@ -121,7 +120,6 @@ function syncBodyState() {
 function updateBoardControls() {
   const inGame = screen === "playing" || dyingUntil > 0;
   pauseBtn.hidden = !inGame;
-  fullscreenBtn.hidden = !inGame || !document.fullscreenEnabled;
 }
 
 function updateDisplays() {
@@ -309,14 +307,6 @@ function setPointerFromTouch(clientX, clientY) {
   mouseY = p.y;
 }
 
-function toggleFullscreen() {
-  if (document.fullscreenElement) {
-    document.exitFullscreen();
-    return;
-  }
-  boardWrap.requestFullscreen?.();
-}
-
 const KEY_MAP = {
   ArrowUp: "up",
   ArrowDown: "down",
@@ -333,10 +323,6 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     if (leaveDialog.open) {
       leaveDialog.close();
-      return;
-    }
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
       return;
     }
     if (screen === "playing" && dyingUntil === 0) pauseGame();
@@ -375,16 +361,6 @@ canvas.addEventListener("touchmove", onTouchPointer, { passive: false });
 pauseBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   if (screen === "playing") pauseGame();
-});
-
-fullscreenBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  toggleFullscreen();
-});
-
-document.addEventListener("fullscreenchange", () => {
-  resize();
-  updateBoardControls();
 });
 
 document.addEventListener("visibilitychange", () => {
