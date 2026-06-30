@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Swarm</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --text: #eaeaea;
+      --muted: #8892b0;
+      --accent: #4ecdc4;
+      --danger: #ff6b6b;
+      --pink: #e056fd;
+      --cyan: #4ecdc4;
+      --glow: rgba(78, 205, 196, 0.35);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(ellipse at top, #1f2a44 0%, var(--bg) 55%);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    header {
+      width: min(100%, 720px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .stats {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .stat-pill {
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 0.35rem 0.75rem;
+    }
+
+    .stat-pill strong { color: var(--accent); }
+
+    #board-wrap {
+      position: relative;
+      width: min(100vw - 2rem, 720px);
+      aspect-ratio: 1;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid rgba(78, 205, 196, 0.25);
+      box-shadow: 0 0 40px var(--glow), inset 0 0 60px rgba(0, 0, 0, 0.35);
+      background: #0d0d18;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(13, 13, 24, 0.82);
+      backdrop-filter: blur(4px);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    #overlay.hidden { display: none; }
+
+    .panel {
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .panel h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .panel p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+
+    .legend {
+      text-align: left;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.6;
+    }
+
+    .legend span { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: middle; }
+
+    .btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    button {
+      font: inherit;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+
+    button:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1b1a;
+      font-weight: 600;
+      box-shadow: 0 0 20px var(--glow);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(255, 107, 107, 0.35);
+    }
+
+    #hud {
+      width: min(100%, 720px);
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    #status-pill {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      box-shadow: 0 0 12px var(--glow);
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    #help-text { color: var(--muted); }
+
+    dialog {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 1.25rem;
+      max-width: 320px;
+    }
+
+    dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+    dialog menu {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Swarm</h1>
+    <div class="stats">
+      <div class="stat-pill">$ <strong id="money-display">0</strong></div>
+      <div class="stat-pill">Best <strong id="high-score-display">0</strong></div>
+    </div>
+  </header>
+
+  <div id="board-wrap">
+    <canvas id="board" aria-label="Swarm game board"></canvas>
+    <div id="overlay">
+      <div class="panel" id="overlay-panel"></div>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div id="status-pill">Press Play to start</div>
+    <div id="help-text">WASD / arrows or mouse · ESC to pause</div>
+  </div>
+
+  <dialog id="leave-dialog">
+    <p>Leave the current game?</p>
+    <menu>
+      <button type="button" class="btn-secondary" id="leave-cancel">Stay</button>
+      <button type="button" class="btn-danger" id="leave-confirm">Leave</button>
+    </menu>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
