@@ -26,6 +26,40 @@
       color: var(--text);
       display: flex;
       flex-direction: column;
+      padding: 0;
+    }
+
+    .site-nav {
+      width: 100%;
+      background: #12182b;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .site-nav__link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.75rem 1rem;
+      color: #8b9cb3;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .site-nav__link:hover {
+      color: #a8b8cc;
+    }
+
+    .site-nav__link svg {
+      flex-shrink: 0;
+    }
+
+    main {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       padding: 1rem;
     }
@@ -218,6 +252,16 @@
   </style>
 </head>
 <body>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/" class="site-nav__link">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+      Home
+    </a>
+  </nav>
+
+  <main>
   <header>
     <h1>Swarm</h1>
     <div class="stats">
@@ -237,6 +281,7 @@
     <div id="status-pill">Press Play to start</div>
     <div id="help-text">WASD / arrows or mouse · ESC to pause</div>
   </div>
+  </main>
 
   <dialog id="leave-dialog">
     <p>Leave the current game?</p>
